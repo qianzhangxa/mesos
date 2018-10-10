@@ -14,6 +14,8 @@
 
 #include <memory>
 
+#include <glog/logging.h>
+
 #include <process/future.hpp>
 #include <process/process.hpp> // For process::initialize.
 
@@ -135,6 +137,7 @@ Future<short> poll(int_fd fd, short events)
 
   // TODO(benh): Check if the file descriptor is non-blocking?
 
+  LOG(INFO) << "==========libev starts polling with fd " << fd << "==========";
   return run_in_event_loop<short>(lambda::bind(&internal::poll, fd, events));
 }
 

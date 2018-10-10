@@ -14,6 +14,8 @@
 
 #include <memory>
 
+#include <glog/logging.h>
+
 #include <process/future.hpp>
 #include <process/io.hpp>
 #include <process/process.hpp> // For process::initialize.
@@ -32,11 +34,18 @@ struct Poll
 };
 
 
-void pollCallback(evutil_socket_t, short what, void* arg)
+void pollCallback(evutil_socket_t fd, short what, void* arg)
 {
   Poll* poll = reinterpret_cast<Poll*>(arg);
 
+  LOG(INFO) << "==========pollCallback starts with fd " << fd
+            << " and with poll " << poll << " and with what "
+            << what << "==========";
+
   if (poll->promise.future().hasDiscard()) {
+    LOG(INFO) << "==========pollCallback discards with fd "
+              << fd << "==========";
+
     poll->promise.discard();
   } else {
     // Convert libevent specific EV_READ / EV_WRITE to io::* specific
@@ -44,25 +53,46 @@ void pollCallback(evutil_socket_t, short what, void* arg)
     short events =
       ((what & EV_READ) ? io::READ : 0) | ((what & EV_WRITE) ? io::WRITE : 0);
 
+    LOG(INFO) << "==========pollCallback sets promise with fd " << fd
+              << " and with what " << what
+              << " and with events " << events << "==========";
+
     poll->promise.set(events);
   }
 
   // Deleting the `poll` also destructs `ev` and hence triggers `event_free`,
   // which makes the event non-pending.
   delete poll;
+
+  LOG(INFO) << "==========pollCallback ends with fd " << fd << "==========";
 }
 
 
 void pollDiscard(const std::weak_ptr<event>& ev, short events)
 {
+  std::shared_ptr<event> evt = ev.lock();
+
+  LOG(INFO) << "==========pollDiscard is called with fd "
+            << event_get_fd(evt.get()) << " and with poll "
+            << event_get_callback_arg(evt.get()) << "==========";
+
   // Discarding inside the event loop prevents `pollCallback()` from being
   // called twice if the future is discarded.
   run_in_event_loop([=]() {
     std::shared_ptr<event> shared = ev.lock();
+
+    LOG(INFO) << "==========pollDiscard is called in event loop with fd "
+              << event_get_fd(shared.get()) << " and with poll "
+              << event_get_callback_arg(shared.get()) << "==========";
+
     // If `ev` cannot be locked `pollCallback` already ran. If it was locked
     // but not pending, `pollCallback` is scheduled to be executed.
     if (static_cast<bool>(shared) &&
         event_pending(shared.get(), events, nullptr)) {
+      LOG(INFO) << "==========event_active is called in event loop with fd "
+                << event_get_fd(shared.get()) << " and with poll "
+                << event_get_callback_arg(shared.get()) << "==========";
+
       // `event_active` will trigger the `pollCallback` to be executed.
       event_active(shared.get(), EV_READ, 0);
     }
@@ -77,6 +107,9 @@ Future<short> poll(int_fd fd, short events)
   process::initialize();
 
   internal::Poll* poll = new internal::Poll();
+
+  LOG(INFO) << "==========libevent starts polling with fd " << fd
+            << " and with poll " << poll << "==========";
 
   Future<short> future = poll->promise.future();
 
@@ -101,6 +134,9 @@ Future<short> poll(int_fd fd, short events)
   // the event is ready and the callback is executed before creating
   // `ev`.
   std::weak_ptr<event> ev(poll->ev);
+
+  LOG(INFO) << "==========libevent adds event with fd " << fd
+            << " and with poll " << poll << "===========";
 
   event_add(poll->ev.get(), nullptr);
 

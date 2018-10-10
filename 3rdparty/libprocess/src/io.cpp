@@ -15,6 +15,8 @@
 
 #include <boost/shared_array.hpp>
 
+#include <glog/logging.h>
+
 #include <process/future.hpp>
 #include <process/io.hpp>
 #include <process/loop.hpp>
@@ -137,10 +139,15 @@ Future<string> read(int_fd fd)
     return Failure(os::strerror(EBADF));
   }
 
+  LOG(INFO) << "==========io::read starts with fd " << fd << "==========";
+
   Try<int_fd> dup = os::dup(fd);
   if (dup.isError()) {
     return Failure(dup.error());
   }
+
+  LOG(INFO) << "==========io::read dup fd " << dup.get()
+            << " for fd " << fd << "==========";
 
   fd = dup.get();
 
@@ -161,6 +168,9 @@ Future<string> read(int_fd fd)
         async.error());
   }
 
+  LOG(INFO) << "==========io::read done close-on-exec and async for fd "
+            << fd << "==========";
+
   // TODO(benh): Wrap up this data as a struct, use 'Owner'.
   // TODO(bmahler): For efficiency, use a rope for the buffer.
   std::shared_ptr<string> buffer(new string());
@@ -173,12 +183,16 @@ Future<string> read(int_fd fd)
       },
       [=](size_t length) -> ControlFlow<string> {
         if (length == 0) { // EOF.
+          LOG(INFO) << "==========io::read EOF for fd " << fd << "==========";
           return Break(std::move(*buffer));
         }
         buffer->append(data.get(), length);
+        LOG(INFO) << "==========io::read buffer for fd " << fd << ": "
+                  << *buffer << "==========";
         return Continue();
       })
     .onAny([fd]() {
+      LOG(INFO) << "==========io::read close fd " << fd << "==========";
       os::close(fd);
     });
 }

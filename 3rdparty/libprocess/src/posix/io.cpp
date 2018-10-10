@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
+#include <glog/logging.h>
+
 #include <process/future.hpp>
 #include <process/io.hpp>
 #include <process/loop.hpp>
@@ -69,12 +71,18 @@ Future<size_t> read(int_fd fd, void* data, size_t size)
       [=](const Option<size_t>& length) -> Future<ControlFlow<size_t>> {
         // Restart/retry if we don't yet have a result.
         if (length.isNone()) {
+          LOG(INFO) << "==========internal::read starts polling with fd "
+                    << fd << "==========";
           return io::poll(fd, io::READ)
-            .then([](short event) -> ControlFlow<size_t> {
+            .then([=](short event) -> ControlFlow<size_t> {
+              LOG(INFO) << "==========internal::read ends polling with fd "
+                        << fd << "==========";
               CHECK_EQ(io::READ, event);
               return Continue();
             });
         }
+        LOG(INFO) << "==========internal::read read " << length.get()
+                  << " bytes data with fd " << fd << "==========";
         return Break(length.get());
       });
 }
