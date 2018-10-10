@@ -1073,6 +1073,9 @@ protected:
 
     // Unregister the eventfd if needed.
     if (eventfd.isSome()) {
+      LOG(ERROR) << "==========Listener::finalize closes fd "
+                 << eventfd.get() << "==========";
+
       Try<Nothing> unregister = unregisterNotifier(eventfd.get());
       if (unregister.isError()) {
         LOG(ERROR) << "Failed to unregister eventfd: " << unregister.error();

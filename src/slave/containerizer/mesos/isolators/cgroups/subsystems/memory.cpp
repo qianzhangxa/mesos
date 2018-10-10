@@ -448,6 +448,9 @@ Future<Nothing> MemorySubsystemProcess::cleanup(
   }
 
   if (infos[containerId]->oomNotifier.isPending()) {
+    LOG(INFO) << "==========Discard oomNotifier for container "
+              << containerId << "==========";
+
     infos[containerId]->oomNotifier.discard();
   }
 
