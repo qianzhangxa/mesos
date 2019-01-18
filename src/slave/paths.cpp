@@ -796,13 +796,6 @@ Try<Nothing> createSandboxDirectory(
   }
 
 #ifndef __WINDOWS__
-  // Since this is a sandbox directory containing private task data,
-  // we want to ensure that it is not accessible to "others".
-  Try<Nothing> chmod = os::chmod(directory, 0750);
-  if (mkdir.isError()) {
-    return Error("Failed to chmod directory: " + chmod.error());
-  }
-
   if (user.isSome()) {
     Try<Nothing> chown = os::chown(user.get(), directory);
     if (chown.isError()) {

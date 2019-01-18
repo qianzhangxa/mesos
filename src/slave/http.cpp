@@ -1824,7 +1824,7 @@ Future<Response> Http::getAgent(
 {
   CHECK_EQ(mesos::agent::Call::GET_AGENT, call.type());
 
-  LOG(INFO) << "Processing GET_AGENT call";
+  LOG(INFO) << "~~~~~Processing GET_AGENT call~~~~~";
 
   agent::Response response;
   response.set_type(mesos::agent::Response::GET_AGENT);
